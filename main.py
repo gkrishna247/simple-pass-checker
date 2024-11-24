@@ -1,21 +1,20 @@
-import re
 import tkinter as tk
-from tkinter import messagebox
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
-import os
+import re
 
-# Constants for password strength
-WEAK = 0
-MODERATE = 1
-STRONG = 2
+VERY_WEAK = 0
+WEAK = 1
+MODERATE = 2
+STRONG = 3
+VERY_STRONG = 4
 
 class PasswordCheckerApp:
     def __init__(self, root):
         self.root = root
         self.root.title("🔒 Password Strength Checker 🔑")
         self.root.geometry("600x650")
-        self.root.configure(bg="#f7f7f7")
+        self.root.configure(bg="#e0f7fa")  # Change background color
 
         self.criteria_labels = {}
         self.criteria_messages = {
@@ -46,7 +45,7 @@ class PasswordCheckerApp:
             print("Favicon not found:", e)
 
     def create_header_frame(self):
-        self.header_frame = tk.Frame(self.root, bg="#4CAF50")
+        self.header_frame = tk.Frame(self.root, bg="#00796b")  # Change header background color
         self.header_frame.pack(side="top", fill="x")
 
         try:
@@ -57,7 +56,7 @@ class PasswordCheckerApp:
         if logo_image:
             logo_image = logo_image.resize((80, 80), Image.LANCZOS)
             logo_photo = ImageTk.PhotoImage(logo_image)
-            logo_label = tk.Label(self.header_frame, image=logo_photo, bg="#4CAF50")
+            logo_label = tk.Label(self.header_frame, image=logo_photo, bg="#00796b")  # Change logo background color
             logo_label.image = logo_photo
             logo_label.pack(side="left", padx=20, pady=10)
 
@@ -65,18 +64,21 @@ class PasswordCheckerApp:
             self.header_frame,
             text="Password Strength Checker",
             font=("Algerian", 26, "bold"),
-            bg="#4CAF50",
+            bg="#00796b",  # Change header text background color
             fg="white",
         )
         self.header_text.pack(side="left", pady=20)
 
     def create_content_frame(self):
-        self.content_frame = tk.Frame(self.root, bg="#f7f7f7")
+        self.content_frame = tk.Frame(self.root, bg="#e0f7fa")  # Change content frame background color
         self.content_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        ttk.Label(self.content_frame, text="Enter your password:", style="TLabel").pack(pady=(10, 5))
+        self.password_label = tk.Label(self.content_frame, text="Enter your password", 
+            font=("Helvetica", 14, "bold"), 
+            bg="#e0f7fa")
+        self.password_label.pack(pady=(10, 5))
 
-        self.entry_frame = tk.Frame(self.content_frame, bg="#f7f7f7")
+        self.entry_frame = tk.Frame(self.content_frame, bg="#e0f7fa")  # Change entry frame background color
         self.entry_frame.pack(pady=5)
 
         self.entry = ttk.Entry(self.entry_frame, show="•", style="TEntry", width=30)
@@ -85,7 +87,7 @@ class PasswordCheckerApp:
         self.eye_open_image = ImageTk.PhotoImage(Image.open("eye_open.png").resize((20, 20), Image.LANCZOS))
         self.eye_closed_image = ImageTk.PhotoImage(Image.open("eye_closed.png").resize((20, 20), Image.LANCZOS))
 
-        self.eye_button = tk.Button(self.entry_frame, image=self.eye_closed_image, command=self.toggle_password_visibility, bg="#f7f7f7", bd=0)
+        self.eye_button = tk.Button(self.entry_frame, image=self.eye_closed_image, command=self.toggle_password_visibility, bg="#e0f7fa", bd=0)  # Change button background color
         self.eye_button.pack(side="left", padx=5)
 
         self.entry.bind("<KeyRelease>", self.update_progress_bar)
@@ -95,20 +97,22 @@ class PasswordCheckerApp:
         self.progress_bar = ttk.Progressbar(self.content_frame, length=300, mode="determinate", maximum=100, value=0)
         self.progress_bar.pack(pady=10)
 
-        self.strength_label = tk.Label(self.content_frame, text="", font=("Comic Sans MS", 14, "bold"), bg="#f7f7f7")
+        self.strength_label = tk.Label(self.content_frame, text="", font=("Comic Sans MS", 14, "bold"), bg="#e0f7fa")  # Change strength label background color
         self.strength_label.pack(pady=10)
 
-        self.criteria_frame = tk.Frame(self.content_frame, bg="#f7f7f7")
+        self.criteria_frame = tk.Frame(self.content_frame, bg="#e0f7fa")  # Change criteria frame background color
         self.criteria_frame.pack()
 
         style = ttk.Style()
+        style.configure("VeryWeak.Horizontal.TProgressbar", foreground="darkred", background="darkred")
         style.configure("Weak.Horizontal.TProgressbar", foreground="red", background="red")
         style.configure("Moderate.Horizontal.TProgressbar", foreground="orange", background="orange")
         style.configure("Strong.Horizontal.TProgressbar", foreground="green", background="green")
+        style.configure("VeryStrong.Horizontal.TProgressbar", foreground="darkgreen", background="darkgreen")
 
     def create_criteria_labels(self):
         for label_text in self.criteria_messages:
-            label = tk.Label(self.criteria_frame, text=self.criteria_messages[label_text], fg="red", font=("Comic Sans MS", 12))
+            label = tk.Label(self.criteria_frame, text=self.criteria_messages[label_text], fg="red", font=("Comic Sans MS", 12), bg="#e0f7fa")  # Change criteria label background color
             label.pack(anchor="w")
             self.criteria_labels[label_text] = label
 
@@ -148,12 +152,16 @@ class PasswordCheckerApp:
             if value:
                 strength += 1
 
-        if strength <= 3:
+        if strength <= 2:
+            return VERY_WEAK, criteria
+        elif strength == 3:
             return WEAK, criteria
-        elif strength == 4 or strength == 5:
+        elif strength == 4:
             return MODERATE, criteria
-        else:
+        elif strength == 5:
             return STRONG, criteria
+        else:
+            return VERY_STRONG, criteria
 
     def pulsate_progress_bar(self, start, target, delta=1):
         current = self.progress_bar['value']
@@ -171,23 +179,31 @@ class PasswordCheckerApp:
         common_passwords = self.load_common_passwords()
 
         if password in common_passwords:
-            strength = WEAK
+            strength = VERY_WEAK
             criteria = {}
         else:
             strength, criteria = self.check_password_strength(password)
 
-        if strength == WEAK:
-            target = 33
+        if strength == VERY_WEAK:
+            target = 20
+            self.strength_label.config(text="Very Weak", foreground="darkred")
+            self.progress_bar['style'] = 'VeryWeak.Horizontal.TProgressbar'
+        elif strength == WEAK:
+            target = 40
             self.strength_label.config(text="Weak", foreground="red")
             self.progress_bar['style'] = 'Weak.Horizontal.TProgressbar'
         elif strength == MODERATE:
-            target = 66
+            target = 60
             self.strength_label.config(text="Moderate", foreground="orange")
             self.progress_bar['style'] = 'Moderate.Horizontal.TProgressbar'
-        else:
-            target = 100
+        elif strength == STRONG:
+            target = 80
             self.strength_label.config(text="Strong", foreground="green")
             self.progress_bar['style'] = 'Strong.Horizontal.TProgressbar'
+        else:
+            target = 100
+            self.strength_label.config(text="Very Strong", foreground="darkgreen")
+            self.progress_bar['style'] = 'VeryStrong.Horizontal.TProgressbar'
 
         self.pulsate_progress_bar(self.progress_bar['value'], target)
 
@@ -199,17 +215,17 @@ class PasswordCheckerApp:
         common_passwords = self.load_common_passwords()
 
         if password in common_passwords:
-            messagebox.showwarning("Password Strength", "Weak: This is a common password. Choose a different one.")
+            messagebox.showwarning("Password Strength", "Very Weak: This is a common password. Choose a different one.")
             return
 
         strength, criteria = self.check_password_strength(password)
         self.update_progress_bar()
 
-        if strength == STRONG:
-            messagebox.showinfo("Password Strength", "Strong: Your password is strong.")
+        if strength == VERY_STRONG:
+            messagebox.showinfo("Password Strength", "Very Strong: Your password is very strong.")
             return
 
-        feedback = "Your password is weak." if strength == WEAK else "Your password is moderate."
+        feedback = "Your password is very weak." if strength == VERY_WEAK else "Your password is weak." if strength == WEAK else "Your password is moderate." if strength == MODERATE else "Your password is strong."
         feedback += " Here's how to improve it:\n\n"
 
         for label, met in criteria.items():
