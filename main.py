@@ -10,212 +10,214 @@ WEAK = 0
 MODERATE = 1
 STRONG = 2
 
-def check_password_strength(password):
-    """Calculates password strength and provides feedback criteria."""
-    strength = 0
-    criteria = {
-        "length": len(password) >= 8,
-        "lowercase": re.search("[a-z]", password),
-        "uppercase": re.search("[A-Z]", password),
-        "digit": re.search("[0-9]", password),
-        "special": re.search("[!@#$%^&*(),.?\":{}|<>]", password),
-        "extended_length": len(password) >= 12,
-        "alphanumeric": re.search("[a-zA-Z]", password) and re.search("[0-9]", password),
-    }
+class PasswordCheckerApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("🔒 Password Strength Checker 🔑")
+        self.root.geometry("600x650")
+        self.root.configure(bg="#f7f7f7")
 
-    for value in criteria.values():
-        if value:
-            strength += 1
+        self.criteria_labels = {}
+        self.criteria_messages = {
+            "length": "At least 8 characters",
+            "lowercase": "Include lowercase letters",
+            "uppercase": "Include uppercase letters",
+            "digit": "Include numbers",
+            "special": "Include special characters (!@#$%^&*...)",
+            "extended_length": "Ideally 12+ characters",
+            "alphanumeric": "Mix letters and numbers",
+        }
 
-    if strength <= 3:
-        return WEAK, criteria
-    elif strength == 4 or strength == 5:
-        return MODERATE, criteria
-    else:
-        return STRONG, criteria
+        self.setup_ui()
 
-def load_common_passwords(filename="commonpass.txt"):
-    """Loads common passwords from a file."""
-    try:
-        with open(filename, 'r') as file:
-            return file.read().splitlines()
-    except FileNotFoundError:
-        messagebox.showerror("Error", f"File {filename} not found.")
-        return []
+    def setup_ui(self):
+        self.add_favicon()
+        self.create_header_frame()
+        self.create_content_frame()
+        self.create_criteria_labels()
 
-def animate_progress(value, target):
-    """Animates the progress bar."""
-    if value < target:
-        value += 1
-        progress_bar['value'] = value
-        app.after(10, animate_progress, value, target)
+        self.root.bind("<Configure>", self.adjust_title_font)
+        self.root.mainloop()
 
-def update_progress_bar(event=None):
-    """Updates UI elements based on password strength."""
-    password = entry.get()
-    common_passwords = load_common_passwords()
+    def add_favicon(self):
+        try:
+            self.root.iconphoto(False, tk.PhotoImage(file="logo.png"))
+        except Exception as e:
+            print("Favicon not found:", e)
 
-    if password in common_passwords:
-        strength = WEAK
-        criteria = {}
-    else:
-        strength, criteria = check_password_strength(password)
+    def create_header_frame(self):
+        self.header_frame = tk.Frame(self.root, bg="#4CAF50")
+        self.header_frame.pack(side="top", fill="x")
 
-    if strength == WEAK:
-        target = 33
-        strength_label.config(text="Weak", foreground="red")
-        progress_bar['style'] = 'Weak.Horizontal.TProgressbar'
-    elif strength == MODERATE:
-        target = 66
-        strength_label.config(text="Moderate", foreground="orange")
-        progress_bar['style'] = 'Moderate.Horizontal.TProgressbar'
-    else:
-        target = 100
-        strength_label.config(text="Strong", foreground="green")
-        progress_bar['style'] = 'Strong.Horizontal.TProgressbar'
+        try:
+            logo_image = Image.open("logo.png")
+        except FileNotFoundError:
+            logo_image = None
 
-    animate_progress(progress_bar['value'], target)
+        if logo_image:
+            logo_image = logo_image.resize((80, 80), Image.LANCZOS)
+            logo_photo = ImageTk.PhotoImage(logo_image)
+            logo_label = tk.Label(self.header_frame, image=logo_photo, bg="#4CAF50")
+            logo_label.image = logo_photo
+            logo_label.pack(side="left", padx=20, pady=10)
 
-    for label, met in criteria.items():
-        criteria_labels[label].config(fg="green" if met else "red")
+        self.header_text = tk.Label(
+            self.header_frame,
+            text="Password Strength Checker",
+            font=("Algerian", 26, "bold"),
+            bg="#4CAF50",
+            fg="white",
+        )
+        self.header_text.pack(side="left", pady=20)
 
-def check_password():
-    """Provides detailed password strength feedback."""
-    password = entry.get()
-    common_passwords = load_common_passwords()
+    def create_content_frame(self):
+        self.content_frame = tk.Frame(self.root, bg="#f7f7f7")
+        self.content_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-    if password in common_passwords:
-        messagebox.showwarning("Password Strength", "Weak: This is a common password. Choose a different one.")
-        return
+        ttk.Label(self.content_frame, text="Enter your password:", style="TLabel").pack(pady=(10, 5))
 
-    strength, criteria = check_password_strength(password)
-    update_progress_bar()
+        self.entry_frame = tk.Frame(self.content_frame, bg="#f7f7f7")
+        self.entry_frame.pack(pady=5)
 
-    if strength == STRONG:
-        messagebox.showinfo("Password Strength", "Strong: Your password is strong.")
-        return
+        self.entry = ttk.Entry(self.entry_frame, show="•", style="TEntry", width=30)
+        self.entry.pack(side="left")
 
-    feedback = "Your password is weak." if strength == WEAK else "Your password is moderate."
-    feedback += " Here's how to improve it:\n\n"
+        self.eye_open_image = ImageTk.PhotoImage(Image.open("eye_open.png").resize((20, 20), Image.LANCZOS))
+        self.eye_closed_image = ImageTk.PhotoImage(Image.open("eye_closed.png").resize((20, 20), Image.LANCZOS))
 
-    for label, met in criteria.items():
-        if not met:
-            feedback += f"- {criteria_messages[label]}\n"
+        self.eye_button = tk.Button(self.entry_frame, image=self.eye_closed_image, command=self.toggle_password_visibility, bg="#f7f7f7", bd=0)
+        self.eye_button.pack(side="left", padx=5)
 
-    messagebox.showinfo("Password Strength", feedback)
+        self.entry.bind("<KeyRelease>", self.update_progress_bar)
 
-def create_criteria_labels(parent):
-    global criteria_labels, criteria_messages
-    criteria_labels = {}
-    criteria_messages = {
-        "length": "At least 8 characters",
-        "lowercase": "Include lowercase letters",
-        "uppercase": "Include uppercase letters",
-        "digit": "Include numbers",
-        "special": "Include special characters (!@#$%^&*...)",
-        "extended_length": "Ideally 12+ characters",
-        "alphanumeric": "Mix letters and numbers",
-    }
+        ttk.Button(self.content_frame, text="Check Password", command=self.check_password, style="TButton").pack(pady=20)
 
-    for label_text in criteria_messages:
-        label = tk.Label(parent, text=criteria_messages[label_text], fg="red", font=("Comic Sans MS", 12))
-        label.pack(anchor="w")
-        criteria_labels[label_text] = label
+        self.progress_bar = ttk.Progressbar(self.content_frame, length=300, mode="determinate", maximum=100, value=0)
+        self.progress_bar.pack(pady=10)
 
-def create_header_frame(parent):
-    global header_text
-    header_frame = tk.Frame(parent, bg="#4CAF50")
-    header_frame.pack(side="top", fill="x")
+        self.strength_label = tk.Label(self.content_frame, text="", font=("Comic Sans MS", 14, "bold"), bg="#f7f7f7")
+        self.strength_label.pack(pady=10)
 
-    # Load the logo image for the header
-    try:
-        logo_image = Image.open("logo.png")
-    except FileNotFoundError:
-        logo_image = None
+        self.criteria_frame = tk.Frame(self.content_frame, bg="#f7f7f7")
+        self.criteria_frame.pack()
 
-    if logo_image:
-        logo_image = logo_image.resize((80, 80), Image.LANCZOS)
-        logo_photo = ImageTk.PhotoImage(logo_image)
-        logo_label = tk.Label(header_frame, image=logo_photo, bg="#4CAF50")
-        logo_label.image = logo_photo
-        logo_label.pack(side="left", padx=20, pady=10)
+        style = ttk.Style()
+        style.configure("Weak.Horizontal.TProgressbar", foreground="red", background="red")
+        style.configure("Moderate.Horizontal.TProgressbar", foreground="orange", background="orange")
+        style.configure("Strong.Horizontal.TProgressbar", foreground="green", background="green")
 
-    header_text = tk.Label(
-        header_frame,
-        text="Password Strength Checker",
-        font=("Algerian", 26, "bold"),
-        bg="#4CAF50",
-        fg="white",
-    )
-    header_text.pack(side="left", pady=20)
+    def create_criteria_labels(self):
+        for label_text in self.criteria_messages:
+            label = tk.Label(self.criteria_frame, text=self.criteria_messages[label_text], fg="red", font=("Comic Sans MS", 12))
+            label.pack(anchor="w")
+            self.criteria_labels[label_text] = label
 
-def adjust_title_font(event):
-    new_size = max(16, int(event.width / 20))
-    header_text.config(font=("Algerian", new_size, "bold"))
+    def adjust_title_font(self, event):
+        new_size = max(25, int(event.width / 20))
+        self.header_text.config(font=("Rockwell", new_size, "bold"))
 
-def toggle_password_visibility():
-    if entry.cget('show') == '•':
-        entry.config(show='')
-        eye_button.config(image=eye_open_image)
-    else:
-        entry.config(show='•')
-        eye_button.config(image=eye_closed_image)
+    def toggle_password_visibility(self):
+        if self.entry.cget('show') == '•':
+            self.entry.config(show='')
+            self.eye_button.config(image=self.eye_open_image)
+        else:
+            self.entry.config(show='•')
+            self.eye_button.config(image=self.eye_closed_image)
 
-def main():
-    global app, entry, progress_bar, strength_label, eye_button, eye_open_image, eye_closed_image
+    def load_common_passwords(self, filename="commonpass.txt"):
+        try:
+            with open(filename, 'r') as file:
+                return file.read().splitlines()
+        except FileNotFoundError:
+            messagebox.showerror("Error", f"File {filename} not found.")
+            return []
 
-    app = tk.Tk()
-    app.title("🔒 Password Strength Checker 🔑")
-    app.geometry("600x650")
-    app.configure(bg="#f7f7f7")
+    def check_password_strength(self, password):
+        strength = 0
+        criteria = {
+            "length": len(password) >= 8,
+            "lowercase": re.search("[a-z]", password),
+            "uppercase": re.search("[A-Z]", password),
+            "digit": re.search("[0-9]", password),
+            "special": re.search("[!@#$%^&*(),.?\":{}|<>]", password),
+            "extended_length": len(password) >= 12,
+            "alphanumeric": re.search("[a-zA-Z]", password) and re.search("[0-9]", password),
+        }
 
-    app.style = ttk.Style()
-    app.style.theme_use("clam")
-    app.style.configure("TLabel", font=("Comic Sans MS", 12), background="#f7f7f7")
-    app.style.configure("TButton", font=("Comic Sans MS", 12, "bold"), padding=5)
-    app.style.configure("TEntry", font=("Comic Sans MS", 12), padding=5)
+        for value in criteria.values():
+            if value:
+                strength += 1
 
-    create_header_frame(app)
+        if strength <= 3:
+            return WEAK, criteria
+        elif strength == 4 or strength == 5:
+            return MODERATE, criteria
+        else:
+            return STRONG, criteria
 
-    content_frame = tk.Frame(app, bg="#f7f7f7")
-    content_frame.pack(pady=20, padx=20, fill="both", expand=True)
+    def pulsate_progress_bar(self, start, target, delta=1):
+        current = self.progress_bar['value']
+        if abs(current - target) < delta:
+            self.progress_bar['value'] = target
+            return
+        if current < target:
+            self.progress_bar['value'] += delta
+        else:
+            self.progress_bar['value'] -= delta
+        self.root.after(10, self.pulsate_progress_bar, start, target, delta)
 
-    ttk.Label(content_frame, text="Enter your password:", style="TLabel").pack(pady=(10, 5))
+    def update_progress_bar(self, event=None):
+        password = self.entry.get()
+        common_passwords = self.load_common_passwords()
 
-    entry_frame = tk.Frame(content_frame, bg="#f7f7f7")
-    entry_frame.pack(pady=5)
+        if password in common_passwords:
+            strength = WEAK
+            criteria = {}
+        else:
+            strength, criteria = self.check_password_strength(password)
 
-    entry = ttk.Entry(entry_frame, show="•", style="TEntry", width=30)
-    entry.pack(side="left")
+        if strength == WEAK:
+            target = 33
+            self.strength_label.config(text="Weak", foreground="red")
+            self.progress_bar['style'] = 'Weak.Horizontal.TProgressbar'
+        elif strength == MODERATE:
+            target = 66
+            self.strength_label.config(text="Moderate", foreground="orange")
+            self.progress_bar['style'] = 'Moderate.Horizontal.TProgressbar'
+        else:
+            target = 100
+            self.strength_label.config(text="Strong", foreground="green")
+            self.progress_bar['style'] = 'Strong.Horizontal.TProgressbar'
 
-    eye_open_image = ImageTk.PhotoImage(Image.open("eye_open.png").resize((20, 20), Image.LANCZOS))
-    eye_closed_image = ImageTk.PhotoImage(Image.open("eye_closed.png").resize((20, 20), Image.LANCZOS))
+        self.pulsate_progress_bar(self.progress_bar['value'], target)
 
-    eye_button = tk.Button(entry_frame, image=eye_closed_image, command=toggle_password_visibility, bg="#f7f7f7", bd=0)
-    eye_button.pack(side="left", padx=5)
+        for label, met in criteria.items():
+            self.criteria_labels[label].config(fg="green" if met else "red")
 
-    entry.bind("<KeyRelease>", update_progress_bar)
+    def check_password(self):
+        password = self.entry.get()
+        common_passwords = self.load_common_passwords()
 
-    ttk.Button(content_frame, text="Check Password", command=check_password, style="TButton").pack(pady=20)
+        if password in common_passwords:
+            messagebox.showwarning("Password Strength", "Weak: This is a common password. Choose a different one.")
+            return
 
-    progress_bar = ttk.Progressbar(content_frame, length=300, mode="determinate", maximum=100, value=0)
-    progress_bar.pack(pady=10)
+        strength, criteria = self.check_password_strength(password)
+        self.update_progress_bar()
 
-    strength_label = tk.Label(content_frame, text="", font=("Comic Sans MS", 14, "bold"), bg="#f7f7f7")
-    strength_label.pack(pady=10)
+        if strength == STRONG:
+            messagebox.showinfo("Password Strength", "Strong: Your password is strong.")
+            return
 
-    criteria_frame = tk.Frame(content_frame, bg="#f7f7f7")
-    criteria_frame.pack()
-    create_criteria_labels(criteria_frame)
+        feedback = "Your password is weak." if strength == WEAK else "Your password is moderate."
+        feedback += " Here's how to improve it:\n\n"
 
-    style = ttk.Style()
-    style.configure("Weak.Horizontal.TProgressbar", foreground="red", background="red")
-    style.configure("Moderate.Horizontal.TProgressbar", foreground="orange", background="orange")
-    style.configure("Strong.Horizontal.TProgressbar", foreground="green", background="green")
+        for label, met in criteria.items():
+            if not met:
+                feedback += f"- {self.criteria_messages[label]}\n"
 
-    app.bind("<Configure>", adjust_title_font)
-
-    app.mainloop()
+        messagebox.showinfo("Password Strength", feedback)
 
 if __name__ == "__main__":
-    main()
+    root = tk.Tk()
+    app = PasswordCheckerApp(root)
