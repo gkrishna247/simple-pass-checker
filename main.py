@@ -81,7 +81,7 @@ class PasswordCheckerApp:
         self.entry_frame = tk.Frame(self.content_frame, bg="#e0f7fa")  # Change entry frame background color
         self.entry_frame.pack(pady=5)
 
-        self.entry = ttk.Entry(self.entry_frame, show="•", style="TEntry", width=30)
+        self.entry = ttk.Entry(self.entry_frame, show="•", style="TEntry", width=40)
         self.entry.pack(side="left")
 
         self.eye_open_image = ImageTk.PhotoImage(Image.open("eye_open.png").resize((20, 20), Image.LANCZOS))
